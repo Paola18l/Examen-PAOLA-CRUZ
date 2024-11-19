@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # Servicio para la base de datos Alumnos
+  alumnosbase:
+    image: mysql:latest
+    container_name: alumnosbase
+    environment:
+      MYSQL_ROOT_PASSWORD: paolacruz
+      MYSQL_DATABASE: alumnos
+      MYSQL_USER: alumnos
+      MYSQL_PASSWORD: paolacruz
+    volumes:
+      - alumnosbase_data:/var/lib/mysql
+      - ./alumnos.sql:/docker-entrypoint-initdb.d/alumnos.sql
+    networks:
+      - red_paola
+
+  # Servicio para la base de datos Maestros
+  maestrosbase:
+    image: mysql:latest
+    container_name: maestrosbase
+    environment:
+      MYSQL_ROOT_PASSWORD: paolacruz
+      MYSQL_DATABASE: maestros
+      MYSQL_USER: maestros
+      MYSQL_PASSWORD: paolacruz
+    ports:
+      - "3307:3306" 
+    volumes:
+      - maestrosbase_data:/var/lib/mysql
+      - ./maestros.sql:/docker-entrypoint-initdb.d/maestros.sql
+    networks:
+      - red_paola
+
+  # Servicio para la aplicación Alumnos
+  alumnos:
+    build:
+      context: .
+      dockerfile: dockerfile_alumnos.yaml
+    container_name: app_alumnos
+    environment:
+      DB_HOST: alumnosbase
+      DB_NAME: alumnos
+      DB_USER: alumnos
+      DB_PASSWORD: paolacruz
+    depends_on:
+      - alumnosbase
+    ports:
+      - "8080:80"
+    networks:
+      - red_paola
+
+  # Servicio para la aplicación Maestros
+  maestros:
+    build:
+      context: .
+      dockerfile: dockerfile_maestros.yaml
+    container_name: app_maestros
+    environment:
+      DB_HOST: maestrosbase
+      DB_NAME: maestros
+      DB_USER: maestros
+      DB_PASSWORD: paolacruz
+      API_ALUMNO: app_alumnos:80
+    depends_on:
+      - maestrosbase
+      - alumnos
+    ports:
+      - "8081:80"
+    networks:
+      - red_paola
+
+  # Servicio para phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: alumnosbase  # Configuración inicial para db_alumnos
+      MYSQL_ROOT_PASSWORD: paolacruz
+    depends_on:
+      - alumnosbase
+      - maestrosbase
+    ports:
+      - "8082:80"
+    networks:
+      - red_paola
+
+volumes:
+  alumnosbase_data:
+  maestrosbase_data:
+
+networks:
+  red_paola:
